@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAVIOR | Control de Divergentes Hospitalarios</title>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LIBRERÍAS EXTERNAS
+     ═══════════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VARIABLES & RESET
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg:         #0a0e1a;
+  --bg2:        #0f1525;
+  --bg3:        #141c30;
+  --card:       #111827;
+  --border:     #1e2d47;
+  --accent:     #00c6ff;
+  --accent2:    #0072ff;
+  --green:      #10b981;
+  --yellow:     #f59e0b;
+  --red:        #ef4444;
+  --text:       #e2e8f0;
+  --muted:      #64748b;
+  --white:      #ffffff;
+  --font-head:  'Segoe UI', system-ui, sans-serif;
+  --radius:     12px;
+  --shadow:     0 4px 24px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-head);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGIN SCREEN
+   ═══════════════════════════════════════════════════════════ */
+#loginScreen{
+  position:fixed;inset:0;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 30% 40%, #0d1f3c 0%, #0a0e1a 70%);
+}
+.login-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:48px 40px;width:420px;max-width:95vw;
+  box-shadow:0 20px 60px rgba(0,198,255,.08),var(--shadow);
+  animation:fadeIn .5s ease;
+}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .logo-icon{
+  width:64px;height:64px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-radius:16px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:28px;margin-bottom:12px;box-shadow:0 4px 20px rgba(0,114,255,.3);
+}
+.login-logo h1{font-size:1.8rem;font-weight:700;color:var(--white);letter-spacing:2px}
+.login-logo p{color:var(--muted);font-size:.8rem;margin-top:4px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.form-group input{
+  width:100%;padding:12px 16px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:.9rem;transition:border .2s;
+}
+.form-group input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,198,255,.1)}
+.login-error{color:var(--red);font-size:.8rem;margin-top:4px;display:none}
+.btn-login{
+  width:100%;padding:13px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border:none;border-radius:8px;color:#fff;font-size:1rem;font-weight:600;
+  letter-spacing:.5px;margin-top:8px;transition:opacity .2s,transform .1s;
+}
+.btn-login:hover{opacity:.9}
+.btn-login:active{transform:scale(.99)}
+.login-version{text-align:center;margin-top:20px;color:var(--muted);font-size:.7rem}
+
+/* ═══════════════════════════════════════════════════════════
+   APP SHELL
+   ═══════════════════════════════════════════════════════════ */
+#app{display:none;flex-direction:column;height:100vh}
+
+/* HEADER */
+.header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 24px;height:56px;
+  position:sticky;top:0;z-index:100;flex-shrink:0;
+}
+.header-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.header-logo .hicon{
+  width:32px;height:32px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.header-logo span{font-size:1.1rem;font-weight:700;color:var(--white);letter-spacing:1.5px}
+.header-title{color:var(--muted);font-size:.8rem;border-left:1px solid var(--border);padding-left:16px}
+.header-spacer{flex:1}
+.header-user{
+  display:flex;align-items:center;gap:10px;padding:6px 12px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;
+  position:relative;
+}
+.avatar{
+  width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;
+}
+.user-name{font-size:.8rem;color:var(--text)}
+.user-role{font-size:.65rem;color:var(--muted)}
+.user-dropdown{
+  position:absolute;top:calc(100% + 8px);right:0;min-width:200px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  box-shadow:var(--shadow);display:none;z-index:200;overflow:hidden;
+}
+.user-dropdown.open{display:block;animation:fadeIn .15s ease}
+.user-dropdown a,.user-dropdown button{
+  display:block;width:100%;text-align:left;padding:10px 16px;
+  color:var(--text);font-size:.85rem;text-decoration:none;border:none;background:none;
+  transition:background .15s;
+}
+.user-dropdown a:hover,.user-dropdown button:hover{background:var(--bg3)}
+.user-dropdown .sep{border-bottom:1px solid var(--border);margin:4px 0}
+
+/* NAV */
+.nav{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;overflow-x:auto;flex-shrink:0;
+}
+.nav-btn{
+  padding:10px 20px;border:none;background:none;color:var(--muted);
+  font-size:.82rem;white-space:nowrap;border-bottom:2px solid transparent;
+  transition:color .2s,border-color .2s;display:flex;align-items:center;gap:6px;
+}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ═══════════════════════════════════════════════════════════
+   UPLOAD ZONE
+   ═══════════════════════════════════════════════════════════ */
+.upload-zone{
+  border:2px dashed var(--border);border-radius:var(--radius);
+  padding:48px 24px;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s;margin-bottom:24px;
+}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,198,255,.03)}
+.upload-icon{font-size:3rem;margin-bottom:12px}
+.upload-zone h3{font-size:1.1rem;color:var(--text);margin-bottom:6px}
+.upload-zone p{color:var(--muted);font-size:.85rem}
+.upload-status{margin-top:12px;padding:10px 16px;background:var(--bg3);border-radius:8px;
+  color:var(--green);font-size:.85rem;display:none}
+
+/* ═══════════════════════════════════════════════════════════
+   CARDS / METRICS
+   ═══════════════════════════════════════════════════════════ */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.metric-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;position:relative;overflow:hidden;
+}
+.metric-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+}
+.metric-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.metric-value{font-size:1.8rem;font-weight:700;color:var(--white);line-height:1}
+.metric-sub{font-size:.75rem;color:var(--muted);margin-top:4px}
+.metric-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:2rem;opacity:.2}
+
+/* ═══════════════════════════════════════════════════════════
+   CHARTS
+   ═══════════════════════════════════════════════════════════ */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px;margin-bottom:24px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.chart-title{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:16px;
+  display:flex;align-items:center;gap:8px}
+.chart-title span{flex:1}
+.chart-container{position:relative;height:260px}
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH BAR
+   ═══════════════════════════════════════════════════════════ */
+.search-bar-wrap{margin-bottom:20px}
+.search-bar{
+  display:flex;gap:10px;align-items:center;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:8px 16px;
+}
+.search-bar input{
+  flex:1;background:none;border:none;color:var(--text);font-size:.9rem;
+  outline:none;padding:4px 0;
+}
+.search-bar input::placeholder{color:var(--muted)}
+.search-icon{color:var(--muted);font-size:1rem}
+.search-filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.filter-chip{
+  padding:4px 12px;border-radius:20px;font-size:.75rem;border:1px solid var(--border);
+  background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .15s;
+}
+.filter-chip.active,.filter-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,198,255,.08)}
+
+/* ═══════════════════════════════════════════════════════════
+   DATA TABLE
+   ═══════════════════════════════════════════════════════════ */
+.table-wrap{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+}
+.table-toolbar{
+  display:flex;gap:12px;align-items:center;padding:14px 16px;
+  border-bottom:1px solid var(--border);flex-wrap:wrap;
+}
+.table-toolbar h3{font-size:.9rem;font-weight:600;flex:1;min-width:150px}
+.tbl-count{color:var(--muted);font-size:.8rem}
+.btn-sm{
+  padding:6px 14px;border-radius:7px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text);font-size:.78rem;transition:all .15s;
+  display:flex;align-items:center;gap:6px;
+}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:linear-gradient(135deg,var(--accent2),var(--accent));border:none;color:#fff}
+.btn-primary:hover{opacity:.9;color:#fff}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+
+.table-scroll{overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.78rem;white-space:nowrap}
+thead th{
+  background:var(--bg2);color:var(--muted);font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.5px;padding:10px 12px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;
+}
+thead th:hover{color:var(--accent)}
+thead th .sort-icon{margin-left:4px;opacity:.5}
+tbody tr{border-bottom:1px solid rgba(30,45,71,.6);transition:background .1s}
+tbody tr:hover{background:rgba(0,198,255,.04)}
+tbody td{padding:9px 12px;color:var(--text)}
+.semaforo{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-right:6px;flex-shrink:0;
+}
+.sem-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sem-yellow{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.sem-red{background:var(--red);box-shadow:0 0 6px var(--red)}
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:12px;font-size:.68rem;font-weight:600;
+}
+.badge-green{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.badge-yellow{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.badge-blue{background:rgba(0,198,255,.12);color:var(--accent);border:1px solid rgba(0,198,255,.25)}
+
+.pagination{
+  display:flex;align-items:center;gap:6px;padding:12px 16px;
+  border-top:1px solid var(--border);justify-content:flex-end;flex-wrap:wrap;
+}
+.page-btn{
+  width:30px;height:30px;border-radius:6px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text);font-size:.8rem;display:flex;
+  align-items:center;justify-content:center;transition:all .15s;
+}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.3;cursor:default}
+.page-info{color:var(--muted);font-size:.78rem;margin:0 8px}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════════ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open{display:flex;animation:fadeIn .2s ease}
+.modal{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  width:100%;max-width:700px;max-height:90vh;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.7);
+  animation:slideUp .25s ease;
+}
+.modal-header{
+  padding:20px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.modal-header h2{font-size:1rem;font-weight:600;flex:1}
+.modal-close{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--muted);font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-close:hover{border-color:var(--red);color:var(--red)}
+.modal-body{padding:24px;overflow-y:auto;flex:1}
+.modal-footer{
+  padding:16px 24px;border-top:1px solid var(--border);
+  display:flex;gap:10px;justify-content:flex-end;
+}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.form-field label{display:block;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.form-field input,.form-field select,.form-field textarea{
+  width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:.85rem;transition:border .2s;
+}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,198,255,.08);
+}
+.form-field textarea{resize:vertical;min-height:72px}
+.form-field select option{background:var(--card)}
+.form-field.full{grid-column:1/-1}
+
+/* ═══════════════════════════════════════════════════════════
+   USERS PANEL
+   ═══════════════════════════════════════════════════════════ */
+.users-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.user-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;display:flex;align-items:center;gap:14px;
+  transition:border-color .15s;
+}
+.user-card:hover{border-color:var(--border)}
+.user-card-avatar{
+  width:44px;height:44px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:#fff;
+}
+.user-card-info{flex:1;min-width:0}
+.user-card-name{font-size:.9rem;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-card-role{font-size:.75rem;color:var(--muted);margin-top:2px}
+.user-card-actions{display:flex;gap:6px}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE / LOADER
+   ═══════════════════════════════════════════════════════════ */
+.empty-state{
+  text-align:center;padding:60px 24px;color:var(--muted);
+}
+.empty-state .icon{font-size:3rem;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:.9rem}
+.loader{
+  display:inline-block;width:20px;height:20px;
+  border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* SECTION TITLE */
+.section-title{
+  font-size:1.1rem;font-weight:700;color:var(--white);
+  margin-bottom:20px;display:flex;align-items:center;gap:10px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:20px}
+.tab{
+  padding:8px 18px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--muted);font-size:.82rem;
+  transition:all .15s;
+}
+.tab.active{background:rgba(0,198,255,.12);border-color:var(--accent);color:var(--accent)}
+.tab:hover:not(.active){color:var(--text)}
+
+/* NOTIFICATION TOAST */
+#toast{
+  position:fixed;bottom:24px;right:24px;z-index:9998;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:12px 20px;display:flex;align-items:center;gap:10px;
+  box-shadow:var(--shadow);transform:translateY(100px);opacity:0;
+  transition:all .3s ease;max-width:320px;
+}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-color:var(--green)}
+#toast.error{border-color:var(--red)}
+#toast .t-icon{font-size:1.2rem}
+#toast .t-msg{font-size:.85rem;color:var(--text)}
+
+/* Progress bar for import */
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px;display:none}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));width:0%;transition:width .3s}
+
+/* Responsive */
+@media(max-width:600px){
+  .content{padding:12px}
+  .charts-grid{grid-template-columns:1fr}
+  .metrics-grid{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+     ═══════════════════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon">⚕</div>
+      <h1>SAVIOR</h1>
+      <p>Control de Divergentes Hospitalarios</p>
+    </div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="loginUser" placeholder="usuario" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+      <div class="login-error" id="loginError">Usuario o contraseña incorrectos</div>
+    </div>
+    <button class="btn-login" onclick="doLogin()">Iniciar Sesión</button>
+    <div class="login-version">v2.0 · Medical Savior © 2026</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP
+     ═══════════════════════════════════════════════════════════ -->
+<div id="app">
+  <!-- HEADER -->
+  <header class="header">
+    <a class="header-logo" href="#">
+      <div class="hicon">⚕</div>
+      <span>SAVIOR</span>
+    </a>
+    <span class="header-title">Control de Divergentes</span>
+    <div class="header-spacer"></div>
+    <!-- DB status -->
+    <div id="dbStatus" style="font-size:.75rem;color:var(--muted);margin-right:8px"></div>
+    <div class="header-user" onclick="toggleUserMenu(this)">
+      <div class="avatar" id="headerAvatar">AD</div>
+      <div>
+        <div class="user-name" id="headerName">Administrador</div>
+        <div class="user-role" id="headerRole">Admin</div>
+      </div>
+      <span style="color:var(--muted);font-size:.7rem;margin-left:4px">▾</span>
+      <div class="user-dropdown" id="userDropdown">
+        <a href="#" onclick="showSection('usuarios');closeUserMenu()">👥 Gestionar Usuarios</a>
+        <div class="sep"></div>
+        <button onclick="doLogout()">🚪 Cerrar Sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showSection('dashboard',this)">📊 Dashboard</button>
+    <button class="nav-btn" onclick="showSection('registros',this)">📋 Registros</button>
+    <button class="nav-btn" onclick="showSection('busqueda',this)">🔍 Búsqueda</button>
+    <button class="nav-btn" onclick="showSection('movimientos',this)">🔄 Movimientos</button>
+    <button class="nav-btn" onclick="showSection('graficas',this)">📈 Gráficas</button>
+    <button class="nav-btn admin-only" onclick="showSection('usuarios',this)">👥 Usuarios</button>
+    <button class="nav-btn" onclick="showSection('importar',this)">📤 Importar</button>
+  </nav>
+
+  <!-- CONTENT -->
+  <main class="content" id="mainContent">
+    <!-- Sections rendered by JS -->
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL UNIVERSAL
+     ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalIfOutside(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <h2 id="modalTitle">Modal</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"><span class="t-icon"></span><span class="t-msg"></span></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+const STATE = {
+  records: [],           // Array of all divergente records
+  filteredRecords: [],   // Current filtered view
+  currentPage: 1,
+  pageSize: 50,
+  sortCol: null,
+  sortDir: 1,
+  searchQuery: '',
+  searchField: 'all',
+  currentSection: 'dashboard',
+  charts: {},            // Chart.js instances
+  editingId: null,
+};
+
+/* ══════════════════════════════════════════
+   USER MANAGEMENT
+   ══════════════════════════════════════════ */
+let USERS = JSON.parse(localStorage.getItem('savior_users') || 'null') || [
+  { id: 1, username: 'admin',    password: 'admin123',    name: 'Administrador',   role: 'admin',    color: '#0072ff' },
+  { id: 2, username: 'usuario',  password: 'usuario123',  name: 'Usuario General', role: 'usuario',  color: '#10b981' },
+];
+let currentUser = null;
+
+function saveUsers(){ localStorage.setItem('savior_users', JSON.stringify(USERS)); }
+
+/* ══════════════════════════════════════════
+   AUTH
+   ══════════════════════════════════════════ */
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const user = USERS.find(x => x.username === u && x.password === p);
+  if(!user){ document.getElementById('loginError').style.display = 'block'; return; }
+  currentUser = user;
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('headerAvatar').textContent = user.name.substring(0,2).toUpperCase();
+  document.getElementById('headerName').textContent = user.name;
+  document.getElementById('headerRole').textContent = user.role === 'admin' ? 'Administrador' : 'Usuario';
+  document.getElementById('headerAvatar').style.background = user.color;
+  // Hide admin sections for non-admin
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = user.role === 'admin' ? '' : 'none';
+  });
+  loadStoredData();
+  showSection('dashboard');
+}
+document.getElementById('loginPass').addEventListener('keyup', e => { if(e.key==='Enter') doLogin(); });
+
+function doLogout(){
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+function toggleUserMenu(el){ document.getElementById('userDropdown').classList.toggle('open'); }
+function closeUserMenu(){ document.getElementById('userDropdown').classList.remove('open'); }
+document.addEventListener('click', e => { if(!e.target.closest('.header-user')) closeUserMenu(); });
+
+/* ══════════════════════════════════════════
+   LOCAL STORAGE
+   ══════════════════════════════════════════ */
+function loadStoredData(){
+  const saved = localStorage.getItem('savior_records');
+  if(saved){
+    try{
+      STATE.records = JSON.parse(saved);
+      updateDBStatus();
+      toast('✅', `${STATE.records.length.toLocaleString()} registros cargados`, 'success');
+    }catch(e){ STATE.records = []; }
+  }
+}
+function saveData(){
+  localStorage.setItem('savior_records', JSON.stringify(STATE.records));
+  updateDBStatus();
+}
+function updateDBStatus(){
+  const el = document.getElementById('dbStatus');
+  el.textContent = STATE.records.length > 0 ? `💾 ${STATE.records.length.toLocaleString()} registros` : '⚠ Sin datos';
+  el.style.color = STATE.records.length > 0 ? 'var(--green)' : 'var(--yellow)';
+}
+
+/* ══════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════ */
+let toastTimer;
+function toast(icon, msg, type='success'){
+  const t = document.getElementById('toast');
+  t.querySelector('.t-icon').textContent = icon;
+  t.querySelector('.t-msg').textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ══════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════ */
+function showSection(name, btn){
+  STATE.currentSection = name;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else {
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      if(b.textContent.toLowerCase().includes(name.substring(0,4))) b.classList.add('active');
+    });
+  }
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '';
+  switch(name){
+    case 'dashboard':   renderDashboard(); break;
+    case 'registros':   renderRegistros(); break;
+    case 'busqueda':    renderBusqueda(); break;
+    case 'movimientos': renderMovimientos(); break;
+    case 'graficas':    renderGraficas(); break;
+    case 'usuarios':    renderUsuarios(); break;
+    case 'importar':    renderImportar(); break;
+  }
+}
+
+/* ══════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════ */
+function fmtMoney(n){
+  const v = parseFloat(n)||0;
+  return '$' + v.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtDate(d){
+  if(!d) return '—';
+  if(d instanceof Date) return d.toLocaleDateString('es-MX');
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? String(d).substring(0,10) : dt.toLocaleDateString('es-MX');
+}
+function ageInDays(d){
+  if(!d) return 999;
+  const dt = new Date(d);
+  if(isNaN(dt.getTime())) return 999;
+  return Math.floor((Date.now()-dt.getTime())/(86400000));
+}
+function semaforo(fecha){
+  const days = ageInDays(fecha);
+  if(days <= 30) return {cls:'sem-green', badge:'badge-green', label:'Verde',  days};
+  if(days <= 60) return {cls:'sem-yellow',badge:'badge-yellow',label:'Amarillo',days};
+  return              {cls:'sem-red',    badge:'badge-red',   label:'Rojo',    days};
+}
+function genId(){ return Date.now() + Math.random().toString(36).substring(2,8); }
+function uniqueVals(field){ return [...new Set(STATE.records.map(r=>r[field]).filter(Boolean))].sort(); }
+
+/* ══════════════════════════════════════════
+   EXCEL IMPORT
+   ══════════════════════════════════════════ */
+function processExcelFile(file){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary',cellDates:true});
+      let imported = 0;
+      const skipSheets = ['PROVEEDORES','INDICE'];
+      wb.SheetNames.forEach(sheetName => {
+        if(skipSheets.includes(sheetName.toUpperCase())) return;
+        const ws = wb.Sheets[sheetName];
+        const raw = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'YYYY-MM-DD'});
+        if(raw.length < 2) return;
+
+        // Find header row (first row with 'ALM' or 'PROVEEDOR')
+        let headerRow = 0;
+        for(let i=0;i<Math.min(raw.length,5);i++){
+          const rowStr = raw[i].join(' ').toUpperCase();
+          if(rowStr.includes('ALM') || rowStr.includes('PROVEEDOR')){
+            headerRow = i; break;
+          }
+        }
+        const headers = raw[headerRow].map(h => String(h||'').trim().toUpperCase());
+        const getIdx = (...names) => {
+          for(const n of names){
+            const i = headers.findIndex(h=>h.includes(n));
+            if(i>=0) return i;
+          }
+          return -1;
+        };
+
+        // Column mapping (flexible)
+        const cols = {
+          alm:       getIdx('ALM'),
+          fechaDiv:  getIdx('FECHA DIV','FECHA D'),
+          noProv:    getIdx('NO. PROV','NO PROV','REF DE'),
+          proveedor: getIdx('PROVEEDOR'),
+          remision:  getIdx('REMISION','FOLIO'),
+          fecha:     getIdx('FECHA','FECHA DE FACT'),
+          paciente:  getIdx('PACIENTE'),
+          episodio:  getIdx('EPISODIO'),
+          codigo:    getIdx('CODIGO'),
+          textoSap:  getIdx('TEXTO SAP'),
+          descripcion: getIdx('DESCRIPCION','TEXTO MATERIAL','DESCRIPCION'),
+          cantidad:  getIdx('CANTIDAD','CANT'),
+          precioUni: getIdx('PRECIO UNI','COSTO UNITARIO'),
+          costoTotal:getIdx('COSTO TOTAL','TOTAL'),
+          fechaSol:  getIdx('FECHA DE SOLICITUD'),
+          solicitud: getIdx('SOLICITUD'),
+          oc:        getIdx('ORDEN COMPRA','OC'),
+          justificacion: getIdx('JUSTIFICACION'),
+          documentacion: getIdx('DOCUMENTACION'),
+          doctor:    getIdx('DOCTOR'),
+          status:    getIdx('STATUS','SITUACION'),
+        };
+
+        for(let i=headerRow+1; i<raw.length; i++){
+          const row = raw[i];
+          if(!row || row.length === 0) continue;
+          const proveedor = row[cols.proveedor] || sheetName;
+          if(!proveedor || String(proveedor).trim()==='') continue;
+          const rec = {
+            _id:          genId() + i,
+            _sheet:       sheetName,
+            alm:          cols.alm>=0 ? row[cols.alm] : '',
+            fechaDiv:     cols.fechaDiv>=0 ? row[cols.fechaDiv] : '',
+            noProv:       cols.noProv>=0 ? row[cols.noProv] : '',
+            proveedor:    String(proveedor).trim(),
+            remision:     cols.remision>=0 ? row[cols.remision] : '',
+            fecha:        cols.fecha>=0 ? row[cols.fecha] : '',
+            paciente:     cols.paciente>=0 ? row[cols.paciente] : '',
+            episodio:     cols.episodio>=0 ? row[cols.episodio] : '',
+            codigo:       cols.codigo>=0 ? row[cols.codigo] : '',
+            textoSap:     cols.textoSap>=0 ? row[cols.textoSap] : '',
+            descripcion:  cols.descripcion>=0 ? row[cols.descripcion] : '',
+            cantidad:     cols.cantidad>=0 ? parseFloat(row[cols.cantidad])||0 : 0,
+            precioUni:    cols.precioUni>=0 ? parseFloat(String(row[cols.precioUni]).replace(/[$,]/g,''))||0 : 0,
+            costoTotal:   cols.costoTotal>=0 ? parseFloat(String(row[cols.costoTotal]).replace(/[$,]/g,''))||0 : 0,
+            fechaSolicitud: cols.fechaSol>=0 ? row[cols.fechaSol] : '',
+            solicitud:    cols.solicitud>=0 ? row[cols.solicitud] : '',
+            oc:           cols.oc>=0 ? row[cols.oc] : '',
+            justificacion: cols.justificacion>=0 ? row[cols.justificacion] : '',
+            documentacion: cols.documentacion>=0 ? row[cols.documentacion] : '',
+            doctor:       cols.doctor>=0 ? row[cols.doctor] : '',
+            status:       cols.status>=0 ? (row[cols.status]||'PENDIENTE') : 'PENDIENTE',
+            _createdAt:   new Date().toISOString(),
+            _updatedAt:   new Date().toISOString(),
+          };
+          // Compute costoTotal if missing
+          if(!rec.costoTotal && rec.cantidad && rec.precioUni){
+            rec.costoTotal = rec.cantidad * rec.precioUni;
+          }
+          STATE.records.push(rec);
+          imported++;
+        }
+      });
+
+      saveData();
+      updateDBStatus();
+      toast('✅', `${imported} registros importados exitosamente`, 'success');
+      document.getElementById('importStatus').style.display = 'block';
+      document.getElementById('importStatus').textContent = `✅ ${imported} registros importados de ${wb.SheetNames.filter(s=>!skipSheets.includes(s.toUpperCase())).length} hojas`;
+    }catch(err){
+      toast('❌', 'Error al procesar el archivo: '+err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ══════════════════════════════════════════
+   RENDER: IMPORTAR
+   ══════════════════════════════════════════ */
+function renderImportar(){
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="section-title">📤 Importar Datos Excel</div>
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📂</div>
+      <h3>Arrastra tu archivo Excel aquí</h3>
+      <p>o haz clic para seleccionar · Formatos: .xlsx .xls</p>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+      <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <div class="upload-status" id="importStatus"></div>
+    <div class="chart-card" style="margin-top:24px">
+      <div class="chart-title"><span>ℹ️ Estructura del Excel esperada</span></div>
+      <table style="font-size:.78rem;width:100%;border-collapse:collapse">
+        <thead><tr>${['ALM','FECHA DIV','NO. PROV','PROVEEDOR','REMISION','FECHA','PACIENTE','EPISODIO','CODIGO','TEXTO SAP','DESCRIPCION','CANTIDAD','PRECIO UNI','FECHA DE SOLICITUD','SOLICITUD','ORDEN COMPRA','JUSTIFICACION','DOCUMENTACION'].map(h=>`<th style="padding:6px 10px;background:var(--bg2);color:var(--muted);text-align:left;border:1px solid var(--border)">${h}</th>`).join('')}</tr></thead>
+        <tbody><tr>${Array(18).fill('<td style="padding:5px 10px;border:1px solid var(--border);color:var(--muted)">dato</td>').join('')}</tr></tbody>
+      </table>
+    </div>
+    ${STATE.records.length>0?`
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn-sm" onclick="exportTemplate()">📥 Descargar Plantilla</button>
+      <button class="btn-sm btn-danger" onclick="clearAllData()">🗑 Limpiar todos los datos</button>
+      <span style="color:var(--muted);font-size:.8rem">Base actual: ${STATE.records.length.toLocaleString()} registros</span>
+    </div>`:''}
+  `;
+  // Drop zone
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag')});
+  dz.addEventListener('dragleave', ()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])});
+}
+function handleFile(file){
+  if(!file) return;
+  if(!file.name.match(/\.xlsx?$/i)){ toast('❌','Formato no válido','error'); return; }
+  processExcelFile(file);
+}
+function clearAllData(){
+  if(!confirm('¿Eliminar TODOS los registros? Esta acción no se puede deshacer.')) return;
+  STATE.records = [];
+  saveData();
+  toast('🗑','Datos eliminados','success');
+  showSection('importar');
+}
+function exportTemplate(){
+  const ws = XLSX.utils.aoa_to_sheet([['ALM','FECHA DIV','NO. PROV','PROVEEDOR','REMISION','FECHA','PACIENTE','EPISODIO','CODIGO','TEXTO SAP','DESCRIPCION','CANTIDAD','PRECIO UNI','COSTO TOTAL','FECHA DE SOLICITUD','SOLICITUD','ORDEN COMPRA','JUSTIFICACION','DOCUMENTACION']]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'DIVERGENTES');
+  XLSX.writeFile(wb,'plantilla_divergentes.xlsx');
+}
+
+/* ══════════════════════════════════════════
+   RENDER: DASHBOARD
+   ══════════════════════════════════════════ */
+function renderDashboard(){
+  if(STATE.records.length===0){
+    document.getElementById('mainContent').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📂</div>
+        <p>No hay datos. <a href="#" onclick="showSection('importar')" style="color:var(--accent)">Importa un archivo Excel</a> o <a href="#" onclick="showSection('registros');openNewRecord()" style="color:var(--accent)">agrega registros manualmente</a>.</p>
+      </div>`;
+    return;
+  }
+  const total = STATE.records.length;
+  const montoTotal = STATE.records.reduce((s,r)=>s+(r.costoTotal||0),0);
+  const semCounts = {verde:0,amarillo:0,rojo:0};
+  STATE.records.forEach(r=>{
+    const s = semaforo(r.fechaDiv);
+    if(s.days<=30) semCounts.verde++;
+    else if(s.days<=60) semCounts.amarillo++;
+    else semCounts.rojo++;
+  });
+  // Top proveedor
+  const byProv = {};
+  STATE.records.forEach(r=>{ byProv[r.proveedor]=(byProv[r.proveedor]||0)+1; });
+  const topProv = Object.entries(byProv).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">📊 Dashboard General</div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Total Divergentes</div>
+        <div class="metric-value">${total.toLocaleString()}</div>
+        <div class="metric-sub">registros activos</div>
+        <div class="metric-icon">📋</div>
+      </div>
+      <div class="metric-card" style="--grad-start:#ef4444">
+        <div class="metric-label">Monto Total</div>
+        <div class="metric-value" style="font-size:1.35rem">${fmtMoney(montoTotal)}</div>
+        <div class="metric-sub">costo total divergentes</div>
+        <div class="metric-icon">💰</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Semáforo Rojo</div>
+        <div class="metric-value" style="color:var(--red)">${semCounts.rojo.toLocaleString()}</div>
+        <div class="metric-sub">más de 60 días</div>
+        <div class="metric-icon">🔴</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Semáforo Amarillo</div>
+        <div class="metric-value" style="color:var(--yellow)">${semCounts.amarillo.toLocaleString()}</div>
+        <div class="metric-sub">31–60 días</div>
+        <div class="metric-icon">🟡</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Semáforo Verde</div>
+        <div class="metric-value" style="color:var(--green)">${semCounts.verde.toLocaleString()}</div>
+        <div class="metric-sub">0–30 días</div>
+        <div class="metric-icon">🟢</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Proveedores únicos</div>
+        <div class="metric-value">${Object.keys(byProv).length}</div>
+        <div class="metric-sub">Top: ${topProv?topProv[0].substring(0,20):'—'}</div>
+        <div class="metric-icon">🏢</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title"><span>Top 10 Proveedores por Registros</span></div>
+        <div class="chart-container"><canvas id="chartTopProv"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span>Semáforo de Antigüedad</span></div>
+        <div class="chart-container"><canvas id="chartSemaforo"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span>Divergentes por Mes</span></div>
+        <div class="chart-container"><canvas id="chartMes"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span>Top 10 Proveedores por Monto</span></div>
+        <div class="chart-container"><canvas id="chartTopMonto"></canvas></div>
+      </div>
+    </div>
+  `;
+  buildDashboardCharts(byProv, semCounts);
+}
+
+function buildDashboardCharts(byProv, semCounts){
+  const chartDefaults = { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#64748b', font:{size:11} } } },
+    scales:{ x:{ ticks:{color:'#64748b',font:{size:10}}, grid:{color:'rgba(30,45,71,.5)'} },
+             y:{ ticks:{color:'#64748b',font:{size:10}}, grid:{color:'rgba(30,45,71,.5)'} } }
+  };
+
+  // Top 10 proveedores (count)
+  const top10 = Object.entries(byProv).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  new Chart(document.getElementById('chartTopProv'), {
+    type:'bar',
+    data:{ labels: top10.map(([k])=>k.length>22?k.substring(0,22)+'…':k),
+           datasets:[{ label:'Registros', data: top10.map(([,v])=>v),
+             backgroundColor:'rgba(0,198,255,.7)', borderColor:'#00c6ff', borderWidth:1, borderRadius:4 }] },
+    options:{...chartDefaults, plugins:{...chartDefaults.plugins, legend:{display:false}}}
+  });
+
+  // Semáforo pie
+  new Chart(document.getElementById('chartSemaforo'), {
+    type:'doughnut',
+    data:{ labels:['Verde (0-30d)','Amarillo (31-60d)','Rojo (>60d)'],
+           datasets:[{ data:[semCounts.verde,semCounts.amarillo,semCounts.rojo],
+             backgroundColor:['rgba(16,185,129,.75)','rgba(245,158,11,.75)','rgba(239,68,68,.75)'],
+             borderColor:['#10b981','#f59e0b','#ef4444'], borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#94a3b8', font:{size:11} } } } }
+  });
+
+  // Por mes
+  const byMonth = {};
+  STATE.records.forEach(r=>{
+    if(!r.fechaDiv) return;
+    const d = new Date(r.fechaDiv);
+    if(isNaN(d.getTime())) return;
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    byMonth[k]=(byMonth[k]||0)+1;
+  });
+  const months = Object.keys(byMonth).sort().slice(-12);
+  new Chart(document.getElementById('chartMes'), {
+    type:'line',
+    data:{ labels: months.map(m=>{const [y,mo]=m.split('-');return `${mo}/${y.substring(2)}`}),
+           datasets:[{ label:'Divergentes', data: months.map(m=>byMonth[m]),
+             borderColor:'#00c6ff', backgroundColor:'rgba(0,198,255,.1)',
+             fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#00c6ff' }] },
+    options:{...chartDefaults, plugins:{...chartDefaults.plugins, legend:{display:false}}}
+  });
+
+  // Top 10 por monto
+  const byProvMonto = {};
+  STATE.records.forEach(r=>{ byProvMonto[r.proveedor]=(byProvMonto[r.proveedor]||0)+(r.costoTotal||0); });
+  const top10m = Object.entries(byProvMonto).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  new Chart(document.getElementById('chartTopMonto'), {
+    type:'bar',
+    data:{ labels: top10m.map(([k])=>k.length>22?k.substring(0,22)+'…':k),
+           datasets:[{ label:'Monto', data: top10m.map(([,v])=>v),
+             backgroundColor:'rgba(239,68,68,.7)', borderColor:'#ef4444', borderWidth:1, borderRadius:4 }] },
+    options:{...chartDefaults,
+      plugins:{...chartDefaults.plugins, legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx => fmtMoney(ctx.raw) } } },
+      scales:{...chartDefaults.scales,
+        y:{ ...chartDefaults.scales.y, ticks:{...chartDefaults.scales.y.ticks, callback: v=>fmtMoney(v)} } }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════
+   RENDER: GRÁFICAS COMPLETAS
+   ══════════════════════════════════════════ */
+function renderGraficas(){
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">📈 Gráficas Analíticas</div>
+    <div class="charts-grid">
+      <div class="chart-card"><div class="chart-title"><span>Distribución por Justificación</span></div><div class="chart-container"><canvas id="gJustif"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title"><span>Evolución de Montos por Mes</span></div><div class="chart-container"><canvas id="gMontoMes"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title"><span>Top 10 Doctores</span></div><div class="chart-container"><canvas id="gDoctor"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title"><span>Top 10 Proveedores (Monto)</span></div><div class="chart-container"><canvas id="gProvMonto"></canvas></div></div>
+    </div>
+  `;
+  if(STATE.records.length===0) return;
+  const co = {responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#64748b',font:{size:11}}}},
+    scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(30,45,71,.5)'}},
+            y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(30,45,71,.5)'}}}};
+
+  // Justificación
+  const jst = {};
+  STATE.records.forEach(r=>{ const k=(r.justificacion||'SIN JUSTIFICACIÓN').substring(0,30); jst[k]=(jst[k]||0)+1; });
+  const jstTop = Object.entries(jst).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  new Chart(document.getElementById('gJustif'),{type:'bar',
+    data:{labels:jstTop.map(([k])=>k),datasets:[{label:'Registros',data:jstTop.map(([,v])=>v),
+    backgroundColor:'rgba(139,92,246,.7)',borderColor:'#8b5cf6',borderWidth:1,borderRadius:4}]},
+    options:{...co,plugins:{...co.plugins,legend:{display:false}},indexAxis:'y'}});
+
+  // Monto por mes
+  const mm = {};
+  STATE.records.forEach(r=>{
+    if(!r.fechaDiv) return;
+    const d=new Date(r.fechaDiv); if(isNaN(d.getTime())) return;
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    mm[k]=(mm[k]||0)+(r.costoTotal||0);
+  });
+  const mks = Object.keys(mm).sort().slice(-12);
+  new Chart(document.getElementById('gMontoMes'),{type:'line',
+    data:{labels:mks.map(m=>{const[y,mo]=m.split('-');return`${mo}/${y.substring(2)}`}),
+    datasets:[{label:'Monto',data:mks.map(m=>mm[m]),borderColor:'#f59e0b',
+    backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#f59e0b'}]},
+    options:{...co,plugins:{...co.plugins,legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>fmtMoney(ctx.raw)}}},
+      scales:{...co.scales,y:{...co.scales.y,ticks:{...co.scales.y.ticks,callback:v=>fmtMoney(v)}}}}});
+
+  // Doctores
+  const dr = {};
+  STATE.records.forEach(r=>{ if(!r.doctor) return; dr[r.doctor]=(dr[r.doctor]||0)+1; });
+  const drTop = Object.entries(dr).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  new Chart(document.getElementById('gDoctor'),{type:'bar',
+    data:{labels:drTop.map(([k])=>k.length>24?k.substring(0,24)+'…':k),
+    datasets:[{label:'Casos',data:drTop.map(([,v])=>v),
+    backgroundColor:'rgba(16,185,129,.7)',borderColor:'#10b981',borderWidth:1,borderRadius:4}]},
+    options:{...co,plugins:{...co.plugins,legend:{display:false}}}});
+
+  // Monto prov
+  const bpm = {};
+  STATE.records.forEach(r=>{ bpm[r.proveedor]=(bpm[r.proveedor]||0)+(r.costoTotal||0); });
+  const bpmTop = Object.entries(bpm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  new Chart(document.getElementById('gProvMonto'),{type:'bar',
+    data:{labels:bpmTop.map(([k])=>k.length>20?k.substring(0,20)+'…':k),
+    datasets:[{label:'Monto',data:bpmTop.map(([,v])=>v),
+    backgroundColor:'rgba(239,68,68,.7)',borderColor:'#ef4444',borderWidth:1,borderRadius:4}]},
+    options:{...co,plugins:{...co.plugins,legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>fmtMoney(ctx.raw)}}},
+      scales:{...co.scales,y:{...co.scales.y,ticks:{...co.scales.y.ticks,callback:v=>fmtMoney(v)}}}}});
+}
+
+/* ══════════════════════════════════════════
+   RENDER: REGISTROS (tabla principal)
+   ══════════════════════════════════════════ */
+function renderRegistros(){
+  STATE.filteredRecords = [...STATE.records];
+  STATE.currentPage = 1;
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">📋 Todos los Registros</div>
+    <div class="search-bar-wrap">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="regSearch" placeholder="Buscar en todos los campos..." oninput="filterRecords()" value="${STATE.searchQuery}">
+        <button class="btn-sm" onclick="document.getElementById('regSearch').value='';filterRecords()">✕</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <h3>Divergentes</h3>
+        <span class="tbl-count" id="tblCount"></span>
+        <button class="btn-sm btn-primary" onclick="openNewRecord()">➕ Nuevo</button>
+        <button class="btn-sm" onclick="exportToExcel()">📥 Exportar Excel</button>
+        <select class="btn-sm" id="pageSizeSelect" onchange="STATE.pageSize=+this.value;STATE.currentPage=1;renderTable()" style="padding:6px 10px">
+          <option value="25">25/pág</option><option value="50" selected>50/pág</option>
+          <option value="100">100/pág</option><option value="200">200/pág</option>
+        </select>
+      </div>
+      <div class="table-scroll" id="tableScroll"></div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  `;
+  filterRecords();
+}
+
+function filterRecords(){
+  const q = (document.getElementById('regSearch')?.value||'').toLowerCase().trim();
+  STATE.searchQuery = q;
+  if(!q){ STATE.filteredRecords=[...STATE.records]; }
+  else {
+    STATE.filteredRecords = STATE.records.filter(r=>
+      Object.values(r).some(v=>v&&String(v).toLowerCase().includes(q))
+    );
+  }
+  STATE.currentPage=1;
+  renderTable();
+}
+
+function renderTable(){
+  const start = (STATE.currentPage-1)*STATE.pageSize;
+  const page = STATE.filteredRecords.slice(start, start+STATE.pageSize);
+  const total = STATE.filteredRecords.length;
+  document.getElementById('tblCount').textContent = `${total.toLocaleString()} registros`;
+
+  const cols = ['','ALM','Fecha Div','Proveedor','Remisión','Paciente','Código','Descripción','Cantidad','Costo Total','Justificación','Semáforo','Acciones'];
+  const keys = ['','alm','fechaDiv','proveedor','remision','paciente','codigo','descripcion','cantidad','costoTotal','justificacion','_sem','_actions'];
+
+  let html = `<table><thead><tr>${cols.map((c,i)=>{
+    if(c===''||c==='Acciones') return `<th>${c}</th>`;
+    return `<th onclick="sortBy('${keys[i]}')">${c}<span class="sort-icon">${STATE.sortCol===keys[i]?(STATE.sortDir>0?'↑':'↓'):'↕'}</span></th>`;
+  }).join('')}</tr></thead><tbody>`;
+
+  if(page.length===0){
+    html += `<tr><td colspan="${cols.length}" style="text-align:center;padding:40px;color:var(--muted)">Sin resultados</td></tr>`;
+  } else {
+    page.forEach(r=>{
+      const sem = semaforo(r.fechaDiv);
+      html += `<tr>
+        <td><span class="semaforo ${sem.cls}"></span></td>
+        <td>${r.alm||'—'}</td>
+        <td>${fmtDate(r.fechaDiv)}</td>
+        <td title="${r.proveedor}">${r.proveedor.length>24?r.proveedor.substring(0,24)+'…':r.proveedor}</td>
+        <td>${r.remision||'—'}</td>
+        <td title="${r.paciente||''}">${r.paciente?(r.paciente.length>22?r.paciente.substring(0,22)+'…':r.paciente):'—'}</td>
+        <td>${r.codigo||'—'}</td>
+        <td title="${r.descripcion||''}">${r.descripcion?(r.descripcion.length>28?r.descripcion.substring(0,28)+'…':r.descripcion):'—'}</td>
+        <td style="text-align:right">${r.cantidad||0}</td>
+        <td style="text-align:right;color:var(--accent)">${fmtMoney(r.costoTotal)}</td>
+        <td title="${r.justificacion||''}">${r.justificacion?(r.justificacion.length>22?r.justificacion.substring(0,22)+'…':r.justificacion):'—'}</td>
+        <td><span class="badge ${sem.badge}">${sem.label} (${sem.days}d)</span></td>
+        <td style="display:flex;gap:4px">
+          <button class="btn-sm" style="padding:4px 8px" onclick="viewRecord('${r._id}')">👁</button>
+          <button class="btn-sm" style="padding:4px 8px" onclick="editRecord('${r._id}')">✏️</button>
+          ${currentUser?.role==='admin'?`<button class="btn-sm btn-danger" style="padding:4px 8px" onclick="deleteRecord('${r._id}')">🗑</button>`:''}
+        </td>
+      </tr>`;
+    });
+  }
+  html += '</tbody></table>';
+  document.getElementById('tableScroll').innerHTML = html;
+  renderPagination(total);
+}
+
+function sortBy(col){
+  if(STATE.sortCol===col) STATE.sortDir*=-1;
+  else { STATE.sortCol=col; STATE.sortDir=1; }
+  STATE.filteredRecords.sort((a,b)=>{
+    const av=a[col]||'', bv=b[col]||'';
+    if(typeof av==='number') return (av-bv)*STATE.sortDir;
+    return String(av).localeCompare(String(bv))*STATE.sortDir;
+  });
+  renderTable();
+}
+
+function renderPagination(total){
+  const pages = Math.ceil(total/STATE.pageSize);
+  const cur = STATE.currentPage;
+  let html = `<span class="page-info">Pág ${cur} de ${pages}</span>`;
+  html += `<button class="page-btn" onclick="goPage(1)" ${cur===1?'disabled':''}>«</button>`;
+  html += `<button class="page-btn" onclick="goPage(${cur-1})" ${cur===1?'disabled':''}>‹</button>`;
+  const range = [];
+  for(let i=Math.max(1,cur-2);i<=Math.min(pages,cur+2);i++) range.push(i);
+  range.forEach(p=> html+=`<button class="page-btn ${p===cur?'active':''}" onclick="goPage(${p})">${p}</button>`);
+  html += `<button class="page-btn" onclick="goPage(${cur+1})" ${cur===pages?'disabled':''}>›</button>`;
+  html += `<button class="page-btn" onclick="goPage(${pages})" ${cur===pages?'disabled':''}>»</button>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+function goPage(p){ STATE.currentPage=p; renderTable(); document.getElementById('tableScroll').scrollTop=0; }
+
+/* ══════════════════════════════════════════
+   RENDER: BÚSQUEDA
+   ══════════════════════════════════════════ */
+function renderBusqueda(){
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">🔍 Búsqueda Inteligente</div>
+    <div class="search-bar-wrap">
+      <div class="search-bar" style="padding:12px 20px">
+        <span class="search-icon" style="font-size:1.4rem">🔍</span>
+        <input type="text" id="smartSearch" placeholder="Buscar por proveedor, folio, código, paciente, doctor, OC..." 
+          oninput="doSmartSearch()" style="font-size:1rem" autofocus>
+      </div>
+      <div class="search-filters">
+        ${['Todos','Proveedor','Código','Paciente','Remisión','Doctor','OC','Justificación'].map((f,i)=>`
+          <button class="filter-chip ${i===0?'active':''}" onclick="setSearchFilter(this,'${['all','proveedor','codigo','paciente','remision','doctor','oc','justificacion'][i]}')">${f}</button>
+        `).join('')}
+      </div>
+    </div>
+    <div id="searchResults">
+      <div class="empty-state"><div class="icon">🔍</div><p>Escribe algo para buscar</p></div>
+    </div>
+  `;
+  STATE.searchField='all';
+}
+function setSearchFilter(btn, field){
+  STATE.searchField=field;
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  doSmartSearch();
+}
+function doSmartSearch(){
+  const q=(document.getElementById('smartSearch')?.value||'').toLowerCase().trim();
+  const res = document.getElementById('searchResults');
+  if(!q){ res.innerHTML=`<div class="empty-state"><div class="icon">🔍</div><p>Escribe algo para buscar</p></div>`; return; }
+  const field = STATE.searchField;
+  const fieldMap = {proveedor:'proveedor',codigo:'codigo',paciente:'paciente',remision:'remision',doctor:'doctor',oc:'oc',justificacion:'justificacion'};
+  let found;
+  if(field==='all') found=STATE.records.filter(r=>Object.values(r).some(v=>v&&String(v).toLowerCase().includes(q)));
+  else found=STATE.records.filter(r=>r[fieldMap[field]]&&String(r[fieldMap[field]]).toLowerCase().includes(q));
+  if(found.length===0){ res.innerHTML=`<div class="empty-state"><div class="icon">😔</div><p>Sin resultados para "<strong>${q}</strong>"</p></div>`; return; }
+  STATE.filteredRecords=found; STATE.currentPage=1;
+  res.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <span style="color:var(--muted);font-size:.85rem">${found.length.toLocaleString()} resultado${found.length!==1?'s':''}</span>
+      <button class="btn-sm" onclick="exportToExcel()">📥 Exportar</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll" id="tableScroll"></div>
+      <div class="pagination" id="pagination"></div>
+    </div>`;
+  renderTable();
+}
+
+/* ══════════════════════════════════════════
+   RENDER: MOVIMIENTOS
+   ══════════════════════════════════════════ */
+function renderMovimientos(){
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">🔄 Control de Movimientos</div>
+    <div class="tabs">
+      <button class="tab active" onclick="setMovTab(this,'pendientes')">⏳ Pendientes</button>
+      <button class="tab" onclick="setMovTab(this,'resueltos')">✅ Resueltos</button>
+      <button class="tab" onclick="setMovTab(this,'todos')">📋 Todos</button>
+    </div>
+    <div id="movContent"></div>
+  `;
+  renderMov('pendientes');
+}
+function setMovTab(btn,tab){ document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderMov(tab); }
+function renderMov(tab){
+  let recs;
+  if(tab==='pendientes') recs=STATE.records.filter(r=>!r.status||r.status.toUpperCase()==='PENDIENTE'||r.status.toUpperCase()==='PROVEEDOR BLOQUEADO'||r.status.toUpperCase()==='CREACION DE CODIGO');
+  else if(tab==='resueltos') recs=STATE.records.filter(r=>r.status&&(r.status.toUpperCase().includes('RESUEL')||r.status.toUpperCase().includes('CERR')));
+  else recs=STATE.records;
+  const html = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <h3>Movimientos — ${recs.length.toLocaleString()} registros</h3>
+        <button class="btn-sm" onclick="exportToExcel()">📥 Exportar</button>
+      </div>
+      <div class="table-scroll">
+        <table><thead><tr>
+          <th>Semáforo</th><th>Fecha Div.</th><th>Proveedor</th><th>Paciente</th>
+          <th>Descripción</th><th>Monto</th><th>Justificación</th><th>Status</th><th>Acciones</th>
+        </tr></thead><tbody>
+        ${recs.slice(0,200).map(r=>{
+          const sem=semaforo(r.fechaDiv);
+          const st=r.status||'PENDIENTE';
+          return `<tr>
+            <td><span class="semaforo ${sem.cls}"></span>${sem.days}d</td>
+            <td>${fmtDate(r.fechaDiv)}</td>
+            <td title="${r.proveedor}">${r.proveedor.substring(0,20)}</td>
+            <td title="${r.paciente||''}">${r.paciente?(r.paciente.substring(0,20)):'—'}</td>
+            <td title="${r.descripcion||''}">${r.descripcion?(r.descripcion.substring(0,28)):'—'}</td>
+            <td style="color:var(--accent)">${fmtMoney(r.costoTotal)}</td>
+            <td title="${r.justificacion||''}">${r.justificacion?(r.justificacion.substring(0,22)):'—'}</td>
+            <td><span class="badge ${st.toUpperCase().includes('BLOQ')||st.toUpperCase()==='PENDIENTE'?'badge-red':st.toUpperCase().includes('RESUEL')||st.toUpperCase().includes('CERR')?'badge-green':'badge-yellow'}">${st.substring(0,20)}</span></td>
+            <td><button class="btn-sm" style="padding:4px 10px" onclick="changeStatus('${r._id}')">Cambiar</button></td>
+          </tr>`;
+        }).join('')}
+        ${recs.length>200?`<tr><td colspan="9" style="text-align:center;padding:12px;color:var(--muted)">Mostrando primeros 200 de ${recs.length}. Usa Exportar para ver todos.</td></tr>`:''}
+        </tbody></table>
+      </div>
+    </div>`;
+  document.getElementById('movContent').innerHTML=html;
+}
+function changeStatus(id){
+  const rec=STATE.records.find(r=>r._id===id);
+  if(!rec) return;
+  openModal('🔄 Cambiar Status',`
+    <div class="form-field">
+      <label>Status actual: <strong style="color:var(--accent)">${rec.status||'PENDIENTE'}</strong></label>
+    </div>
+    <div class="form-field" style="margin-top:12px">
+      <label>Nuevo Status</label>
+      <select id="newStatus">
+        <option value="PENDIENTE">PENDIENTE</option>
+        <option value="PROVEEDOR BLOQUEADO">PROVEEDOR BLOQUEADO</option>
+        <option value="CREACION DE CODIGO">CREACION DE CODIGO</option>
+        <option value="EN PROCESO">EN PROCESO</option>
+        <option value="SOLICITUD ENVIADA">SOLICITUD ENVIADA</option>
+        <option value="OC GENERADA">OC GENERADA</option>
+        <option value="RESUELTO">RESUELTO</option>
+        <option value="CERRADO">CERRADO</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-top:12px">
+      <label>Notas</label>
+      <textarea id="statusNotes" rows="2" placeholder="Observaciones...">${rec.documentacion||''}</textarea>
+    </div>
+  `,[
+    {label:'Guardar',cls:'btn-primary',fn:()=>{
+      rec.status=document.getElementById('newStatus').value;
+      rec.documentacion=document.getElementById('statusNotes').value;
+      rec._updatedAt=new Date().toISOString();
+      saveData(); closeModal(); toast('✅','Status actualizado','success');
+      renderMovimientos();
+    }},
+    {label:'Cancelar',cls:'',fn:closeModal}
+  ]);
+  document.getElementById('newStatus').value=rec.status||'PENDIENTE';
+}
+
+/* ══════════════════════════════════════════
+   CRUD: VIEW / EDIT / NEW / DELETE
+   ══════════════════════════════════════════ */
+function viewRecord(id){
+  const r=STATE.records.find(x=>x._id===id); if(!r) return;
+  const sem=semaforo(r.fechaDiv);
+  openModal('👁 Detalle del Divergente',`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      ${[
+        ['ALM',r.alm],['Fecha Divergente',fmtDate(r.fechaDiv)],['No. Proveedor',r.noProv],
+        ['Proveedor',r.proveedor],['Remisión',r.remision],['Fecha Factura',fmtDate(r.fecha)],
+        ['Paciente',r.paciente],['Episodio',r.episodio],['Código',r.codigo],
+        ['Texto SAP',r.textoSap],['Descripción',r.descripcion,'full'],
+        ['Cantidad',r.cantidad],['Precio Unitario',fmtMoney(r.precioUni)],['Costo Total',fmtMoney(r.costoTotal)],
+        ['Fecha Solicitud',fmtDate(r.fechaSolicitud)],['Solicitud',r.solicitud],['Orden de Compra',r.oc],
+        ['Doctor',r.doctor],['Status',r.status],
+        ['Justificación',r.justificacion,'full'],['Documentación',r.documentacion,'full'],
+      ].map(([k,v,full])=>`
+        <div ${full?'style="grid-column:1/-1"':''}>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px">${k}</div>
+          <div style="font-size:.88rem;color:var(--white);padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)">${v||'—'}</div>
+        </div>
+      `).join('')}
+      <div style="grid-column:1/-1">
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px">Semáforo</div>
+        <span class="badge ${sem.badge}" style="font-size:.85rem;padding:4px 12px">${sem.label} — ${sem.days} días</span>
+      </div>
+    </div>
+  `,[{label:'Editar',cls:'btn-primary',fn:()=>{closeModal();editRecord(id)}},{label:'Cerrar',cls:'',fn:closeModal}]);
+}
+
+function buildRecordForm(r=null){
+  const f=(k,lbl,type='text',full=false)=>`
+    <div class="form-field ${full?'full':''}">
+      <label>${lbl}</label>
+      <input type="${type}" id="f_${k}" value="${r?String(r[k]||'').replace(/"/g,'&quot;'):''}">
+    </div>`;
+  const sel=(k,lbl,opts)=>`
+    <div class="form-field">
+      <label>${lbl}</label>
+      <select id="f_${k}">
+        ${opts.map(o=>`<option value="${o}" ${r&&r[k]===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>`;
+  const ta=(k,lbl,full=false)=>`
+    <div class="form-field ${full?'full':''}">
+      <label>${lbl}</label>
+      <textarea id="f_${k}" rows="2">${r?String(r[k]||''):''}</textarea>
+    </div>`;
+  return `<div class="form-grid">
+    ${f('alm','ALM')}${f('fechaDiv','Fecha Divergente','date')}
+    ${f('noProv','No. Proveedor')}${f('proveedor','Proveedor',undefined,false)}
+    ${f('remision','Remisión')}${f('fecha','Fecha Factura','date')}
+    ${f('paciente','Paciente')}${f('episodio','Episodio')}
+    ${f('codigo','Código')}${f('textoSap','Texto SAP')}
+    ${f('descripcion','Descripción',undefined,false)}
+    ${f('cantidad','Cantidad','number')}${f('precioUni','Precio Unitario','number')}${f('costoTotal','Costo Total','number')}
+    ${f('fechaSolicitud','Fecha Solicitud','date')}${f('solicitud','Solicitud')}${f('oc','Orden de Compra')}
+    ${f('doctor','Doctor')}
+    ${sel('status','Status',['PENDIENTE','PROVEEDOR BLOQUEADO','CREACION DE CODIGO','EN PROCESO','SOLICITUD ENVIADA','OC GENERADA','RESUELTO','CERRADO'])}
+    ${ta('justificacion','Justificación',true)}
+    ${ta('documentacion','Documentación',true)}
+  </div>`;
+}
+
+function collectForm(){
+  const get=(k)=>document.getElementById('f_'+k)?.value?.trim()||'';
+  return {
+    alm:get('alm'),fechaDiv:get('fechaDiv'),noProv:get('noProv'),proveedor:get('proveedor'),
+    remision:get('remision'),fecha:get('fecha'),paciente:get('paciente'),episodio:get('episodio'),
+    codigo:get('codigo'),textoSap:get('textoSap'),descripcion:get('descripcion'),
+    cantidad:parseFloat(get('cantidad'))||0,precioUni:parseFloat(get('precioUni'))||0,
+    costoTotal:parseFloat(get('costoTotal'))||0,
+    fechaSolicitud:get('fechaSolicitud'),solicitud:get('solicitud'),oc:get('oc'),
+    doctor:get('doctor'),status:get('status'),
+    justificacion:get('justificacion'),documentacion:get('documentacion'),
+  };
+}
+
+function openNewRecord(){
+  openModal('➕ Nuevo Divergente', buildRecordForm(), [
+    {label:'Guardar',cls:'btn-primary',fn:()=>{
+      const data=collectForm();
+      if(!data.proveedor){ toast('❌','El proveedor es requerido','error'); return; }
+      const rec={_id:genId(),_createdAt:new Date().toISOString(),_updatedAt:new Date().toISOString(),...data};
+      STATE.records.unshift(rec);
+      saveData(); closeModal();
+      toast('✅','Registro creado','success');
+      if(STATE.currentSection==='registros') renderRegistros();
+    }},
+    {label:'Cancelar',cls:'',fn:closeModal}
+  ]);
+}
+
+function editRecord(id){
+  const r=STATE.records.find(x=>x._id===id); if(!r) return;
+  STATE.editingId=id;
+  openModal('✏️ Editar Divergente', buildRecordForm(r),[
+    {label:'Guardar Cambios',cls:'btn-primary',fn:()=>{
+      const data=collectForm();
+      if(!data.proveedor){ toast('❌','El proveedor es requerido','error'); return; }
+      const idx=STATE.records.findIndex(x=>x._id===id);
+      STATE.records[idx]={...STATE.records[idx],...data,_updatedAt:new Date().toISOString()};
+      saveData(); closeModal(); toast('✅','Registro actualizado','success');
+      if(STATE.currentSection==='registros') filterRecords();
+    }},
+    {label:'Cancelar',cls:'',fn:closeModal}
+  ]);
+}
+
+function deleteRecord(id){
+  if(!confirm('¿Eliminar este registro permanentemente?')) return;
+  STATE.records=STATE.records.filter(r=>r._id!==id);
+  saveData(); toast('🗑','Registro eliminado','success');
+  filterRecords();
+}
+
+/* ══════════════════════════════════════════
+   RENDER: USUARIOS
+   ══════════════════════════════════════════ */
+function renderUsuarios(){
+  if(currentUser?.role!=='admin'){ document.getElementById('mainContent').innerHTML=`<div class="empty-state"><div class="icon">🔒</div><p>Acceso restringido a administradores</p></div>`; return; }
+  document.getElementById('mainContent').innerHTML=`
+    <div class="section-title">👥 Gestión de Usuarios</div>
+    <div style="margin-bottom:16px"><button class="btn-sm btn-primary" onclick="openNewUser()">➕ Nuevo Usuario</button></div>
+    <div class="users-grid" id="usersGrid"></div>
+  `;
+  renderUsersGrid();
+}
+function renderUsersGrid(){
+  const g=document.getElementById('usersGrid'); if(!g) return;
+  g.innerHTML=USERS.map(u=>`
+    <div class="user-card">
+      <div class="user-card-avatar" style="background:${u.color}">${u.name.substring(0,2).toUpperCase()}</div>
+      <div class="user-card-info">
+        <div class="user-card-name">${u.name}</div>
+        <div class="user-card-role">@${u.username} · ${u.role==='admin'?'Administrador':'Usuario'}</div>
+      </div>
+      <div class="user-card-actions">
+        <button class="btn-sm" style="padding:4px 8px" onclick="editUser(${u.id})">✏️</button>
+        ${u.id!==currentUser.id?`<button class="btn-sm btn-danger" style="padding:4px 8px" onclick="deleteUser(${u.id})">🗑</button>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+function openNewUser(){
+  openModal('➕ Nuevo Usuario',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nombre completo</label><input type="text" id="un_name"></div>
+      <div class="form-field"><label>Usuario</label><input type="text" id="un_user"></div>
+      <div class="form-field"><label>Contraseña</label><input type="password" id="un_pass"></div>
+      <div class="form-field"><label>Rol</label>
+        <select id="un_role"><option value="usuario">Usuario</option><option value="admin">Administrador</option></select>
+      </div>
+      <div class="form-field"><label>Color avatar</label>
+        <input type="color" id="un_color" value="#0072ff" style="height:40px">
+      </div>
+    </div>
+  `,[
+    {label:'Crear',cls:'btn-primary',fn:()=>{
+      const n=document.getElementById('un_name').value.trim();
+      const u=document.getElementById('un_user').value.trim();
+      const p=document.getElementById('un_pass').value.trim();
+      if(!n||!u||!p){ toast('❌','Completa todos los campos','error'); return; }
+      if(USERS.find(x=>x.username===u)){ toast('❌','Usuario ya existe','error'); return; }
+      USERS.push({id:Date.now(),username:u,password:p,name:n,role:document.getElementById('un_role').value,color:document.getElementById('un_color').value});
+      saveUsers(); closeModal(); toast('✅','Usuario creado','success'); renderUsuarios();
+    }},
+    {label:'Cancelar',cls:'',fn:closeModal}
+  ]);
+}
+function editUser(id){
+  const u=USERS.find(x=>x.id===id); if(!u) return;
+  openModal('✏️ Editar Usuario',`
+    <div class="form-grid">
+      <div class="form-field"><label>Nombre</label><input type="text" id="eu_name" value="${u.name}"></div>
+      <div class="form-field"><label>Usuario</label><input type="text" id="eu_user" value="${u.username}"></div>
+      <div class="form-field"><label>Nueva contraseña (dejar vacío para no cambiar)</label><input type="password" id="eu_pass" placeholder="••••••••"></div>
+      <div class="form-field"><label>Rol</label>
+        <select id="eu_role"><option value="usuario" ${u.role==='usuario'?'selected':''}>Usuario</option><option value="admin" ${u.role==='admin'?'selected':''}>Administrador</option></select>
+      </div>
+      <div class="form-field"><label>Color</label><input type="color" id="eu_color" value="${u.color}" style="height:40px"></div>
+    </div>
+  `,[
+    {label:'Guardar',cls:'btn-primary',fn:()=>{
+      const idx=USERS.findIndex(x=>x.id===id);
+      const newPass=document.getElementById('eu_pass').value.trim();
+      USERS[idx]={...USERS[idx],
+        name:document.getElementById('eu_name').value.trim(),
+        username:document.getElementById('eu_user').value.trim(),
+        role:document.getElementById('eu_role').value,
+        color:document.getElementById('eu_color').value,
+        ...(newPass?{password:newPass}:{})
+      };
+      saveUsers(); closeModal(); toast('✅','Usuario actualizado','success'); renderUsuarios();
+    }},
+    {label:'Cancelar',cls:'',fn:closeModal}
+  ]);
+}
+function deleteUser(id){
+  if(!confirm('¿Eliminar este usuario?')) return;
+  USERS=USERS.filter(u=>u.id!==id);
+  saveUsers(); toast('🗑','Usuario eliminado','success'); renderUsuarios();
+}
+
+/* ══════════════════════════════════════════
+   EXPORT TO EXCEL
+   ══════════════════════════════════════════ */
+function exportToExcel(){
+  const recs = STATE.filteredRecords.length > 0 ? STATE.filteredRecords : STATE.records;
+  const data = recs.map(r=>({
+    ALM: r.alm, 'FECHA DIV': r.fechaDiv, 'NO. PROV': r.noProv, PROVEEDOR: r.proveedor,
+    REMISION: r.remision, FECHA: r.fecha, PACIENTE: r.paciente, EPISODIO: r.episodio,
+    CODIGO: r.codigo, 'TEXTO SAP': r.textoSap, DESCRIPCION: r.descripcion,
+    CANTIDAD: r.cantidad, 'PRECIO UNI': r.precioUni, 'COSTO TOTAL': r.costoTotal,
+    'FECHA DE SOLICITUD': r.fechaSolicitud, SOLICITUD: r.solicitud, 'ORDEN COMPRA': r.oc,
+    DOCTOR: r.doctor, STATUS: r.status, JUSTIFICACION: r.justificacion, DOCUMENTACION: r.documentacion,
+  }));
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'DIVERGENTES');
+  XLSX.writeFile(wb,`divergentes_${new Date().toISOString().substring(0,10)}.xlsx`);
+  toast('📥','Exportado exitosamente','success');
+}
+
+/* ══════════════════════════════════════════
+   MODAL
+   ══════════════════════════════════════════ */
+function openModal(title, body, btns=[]){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').innerHTML=body;
+  document.getElementById('modalFooter').innerHTML=btns.map((b,i)=>
+    `<button class="btn-sm ${b.cls||''}" id="mbtn_${i}">${b.label}</button>`
+  ).join('');
+  btns.forEach((b,i)=>{ document.getElementById('mbtn_'+i).onclick=b.fn; });
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalIfOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+// Allow enter key on login
+document.getElementById('loginUser').addEventListener('keyup', e=>{ if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+</script>
+</body>
+</html>
